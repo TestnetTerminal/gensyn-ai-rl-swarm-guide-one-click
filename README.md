@@ -18,6 +18,11 @@ This repository provides a **one-click installation and setup script** for runni
 bash <(curl -s https://raw.githubusercontent.com/TestnetTerminal/gensyn-ai-rl-swarm-guide-one-click/main/setup.sh)
 ```
 
+> For VPS use clodflared tunnel
+```bash
+bash <(curl -s https://raw.githubusercontent.com/TestnetTerminal/gensyn-ai-rl-swarm-guide-one-click/main/cloud.sh)
+```
+
 📦 What This Script Does
 
 1. Installs required dependencies:
