@@ -98,3 +98,4 @@ echo "✅ Setup running in screen session named 'gensyn'."
 echo "🔍 To attach to the screen: run → screen -r gensyn"
 echo ""
 '
+'
