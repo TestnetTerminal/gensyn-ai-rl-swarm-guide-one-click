@@ -96,8 +96,36 @@ if [ -f 'swarm.pem' ]; then
     echo '✅ Found swarm.pem file, proceeding with authentication...'
 else
     echo '⚠️  No swarm.pem found in the current directory.'
-    echo '📝 You can add your swarm.pem file to the rl-swarm directory later.'
-    echo '🔗 To add it: copy your swarm.pem file to: \$(pwd)/swarm.pem'
+    echo '📂 Please copy your swarm.pem file to: \$(pwd)'
+    echo '📋 Full path: \$(pwd)/swarm.pem'
+    echo ''
+    echo '⏳ Waiting 50 seconds for you to copy the file...'
+    echo '✅ Press 1 and Enter if you have copied the file to continue immediately'
+    echo '⏭️  Or wait 50 seconds to continue automatically'
+    echo ''
+    
+    # Countdown with user input option
+    for i in \$(seq 50 -1 1); do
+        printf \"\\r⏰ Waiting: %02d seconds (Press 1 to continue)\" \$i
+        
+        # Check for user input with timeout
+        if read -t 1 -n 1 user_input 2>/dev/null; then
+            if [ \"\$user_input\" = \"1\" ]; then
+                echo \"\"
+                echo \"⚡ Continuing early...\"
+                break
+            fi
+        fi
+    done
+    echo \"\"
+    
+    # Check again for swarm.pem after the wait
+    if [ -f 'swarm.pem' ]; then
+        echo '✅ Great! Found swarm.pem file, proceeding with authentication...'
+    else
+        echo '⚠️  Still no swarm.pem found. Continuing without authentication...'
+        echo '🔄 You can add it later and restart the swarm.'
+    fi
 fi
 
 echo ''
