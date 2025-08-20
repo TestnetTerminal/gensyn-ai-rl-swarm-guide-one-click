@@ -50,6 +50,8 @@ while true; do
                     [Yy]* )
                         echo "🚀 Running the swarm node..."
                         ./run_rl_swarm.sh
+                        echo "🛑 Swarm exited or completed. Keeping screen alive..."
+                        sleep infinity
                         break 2
                         ;;
                     * )
@@ -64,6 +66,8 @@ while true; do
                 [Yy]* )
                     echo "🚀 Running the swarm node without swarm.pem..."
                     ./run_rl_swarm.sh
+                    echo "🛑 Swarm exited or completed. Keeping screen alive..."
+                    sleep infinity
                     break
                     ;;
                 * )
@@ -77,7 +81,6 @@ while true; do
     esac
 done
 
-'
 # 9️⃣ Big ASCII Banner
 echo ""
 echo "████████╗███████╗███████╗████████╗███╗   ██╗███████╗████████╗    ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     "
