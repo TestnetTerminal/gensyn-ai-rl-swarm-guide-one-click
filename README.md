@@ -57,3 +57,10 @@ To reattach to it at any time:
 ```bash
 screen -r gensyn
 ```
+---
+
+## 🌍 Connect With Us
+
+Telegram: [https://t.me/TestnetTerminal](https://t.me/TestnetTerminal)  
+X/Twitter: [https://x.com/TestnetTerminal](https://x.com/TestnetTerminal)
+Github: [https://https://github.com/TestnetTerminal](https://github.com/TestnetTerminal)
