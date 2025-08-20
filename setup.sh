@@ -80,6 +80,7 @@ while true; do
             ;;
     esac
 done
+'
 
 # 9️⃣ Big ASCII Banner
 echo ""
@@ -97,5 +98,3 @@ echo "📞 Need Help?: https://t.me/Amit3701"
 echo "✅ Setup running in screen session named 'gensyn'."
 echo "🔍 To attach to the screen: run → screen -r gensyn"
 echo ""
-'
-'
