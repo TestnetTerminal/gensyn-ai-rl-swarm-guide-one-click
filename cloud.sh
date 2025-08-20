@@ -30,8 +30,8 @@ print_success() {
 # Display banner
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║                 🌐 CLOUDFLARE TUNNEL SETUP 🌐                  ║${NC}"
-echo -e "${BLUE}║              Access localhost:3000 from anywhere!             ║${NC}"
+echo -e "${BLUE}║                 🌐 CLOUDFLARE TUNNEL SETUP 🌐                 ║${NC}"
+echo -e "${BLUE}║              Access localhost:3000 from anywhere!              ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -118,7 +118,7 @@ fi
 
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║                        🚀 READY TO TUNNEL! 🚀                  ║${NC}"
+echo -e "${BLUE}║                        🚀 READY TO TUNNEL! 🚀                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
