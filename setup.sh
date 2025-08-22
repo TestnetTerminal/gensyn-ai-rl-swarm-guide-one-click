@@ -909,7 +909,7 @@ delete_gensyn_node() {
     echo ""
     
     # First confirmation
-    echo -n -e "${WHITE}❓ Are you sure you want to delete Gensyn AI Node? (y/N/Enter=No): ${NC}"
+    echo -n -e "${WHITE}❓ Are you sure you want to delete Gensyn AI Node? (y/N/ENTER): ${NC}"
     read -r first_confirm
     
     case "${first_confirm,,}" in
@@ -928,11 +928,10 @@ delete_gensyn_node() {
     echo ""
     echo -e "${RED}⚠️ Before I delete everything, have you saved your swarm.pem file?${NC}"
     echo -e "${YELLOW}📄 Note: Once deleted, your swarm.pem cannot be recovered!${NC}"
-    echo -e "${CYAN}💡 You can download it from: https://app.gensyn.ai/${NC}"
     echo ""
     
     # Second confirmation - more specific about swarm.pem
-    echo -n -e "${WHITE}❓ Have you backed up your swarm.pem? Still want to delete? (y/N): ${NC}"
+    echo -n -e "${WHITE}❓ Have you backed up your swarm.pem? Still want to delete? (y/N/ENTER): ${NC}"
     read -r second_confirm
     
     case "${second_confirm,,}" in
