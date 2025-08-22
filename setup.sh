@@ -476,89 +476,291 @@ download_swarm_pem() {
                 # Create a download page
                 cat > index.html << EOF
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download swarm.pem - Testnet Terminal</title>
     <meta http-equiv="refresh" content="3;url=swarm.pem">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             text-align: center; 
-            padding: 50px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
+            padding: 20px; 
+            background: #080c14;
+            color: #19c1ff; 
             min-height: 100vh;
-            margin: 0;
+            position: relative;
+            overflow-x: hidden;
         }
+        
+        /* Animated background particles */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #19c1ff;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: float 8s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.6; }
+            50% { transform: translateY(-20px) translateX(10px); opacity: 1; }
+        }
+        
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: rgba(25, 193, 255, 0.3);
+            z-index: 1000;
+            font-weight: bold;
+        }
+        
         .container { 
-            max-width: 600px; 
+            max-width: 90%;
+            width: 500px;
             margin: 0 auto; 
-            background: rgba(255,255,255,0.1);
-            padding: 40px;
-            border-radius: 20px;
+            background: rgba(25, 193, 255, 0.05);
+            padding: 30px 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(25, 193, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(25, 193, 255, 0.1);
             backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 10;
         }
+        
+        .logo { 
+            font-size: 4em; 
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #19c1ff, #0066cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(25, 193, 255, 0.3));
+        }
+        
+        h1 {
+            color: #19c1ff;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        
+        h3 {
+            color: rgba(25, 193, 255, 0.8);
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+        
         .download-btn { 
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            color: white; 
+            background: linear-gradient(45deg, #19c1ff, #0066cc);
+            color: #080c14; 
             padding: 15px 30px; 
             text-decoration: none; 
-            border-radius: 10px; 
-            font-size: 18px; 
+            border-radius: 25px; 
+            font-size: 16px; 
+            font-weight: 600;
             display: inline-block;
-            margin: 20px;
+            margin: 20px 0;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 20px rgba(25, 193, 255, 0.3);
+            border: none;
+            cursor: pointer;
         }
+        
         .download-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 30px rgba(25, 193, 255, 0.5);
+            background: linear-gradient(45deg, #0066cc, #19c1ff);
         }
+        
         .info-box { 
-            background: rgba(255,255,255,0.2); 
+            background: rgba(25, 193, 255, 0.08); 
             padding: 20px; 
             border-radius: 10px; 
             margin: 20px 0; 
-            border-left: 4px solid #4CAF50;
+            border-left: 3px solid #19c1ff;
+            text-align: left;
         }
-        .logo { font-size: 3em; margin-bottom: 20px; }
+        
+        .info-box h4 {
+            color: #19c1ff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .info-box p {
+            color: rgba(25, 193, 255, 0.9);
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
         .warning {
-            background: rgba(255,193,7,0.2);
-            border-left: 4px solid #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid #ffc107;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin: 20px 0;
         }
+        
+        .warning h4 {
+            color: #ffc107;
+            margin-bottom: 10px;
+        }
+        
+        .warning p {
+            color: rgba(255, 193, 7, 0.9);
+            line-height: 1.5;
+        }
+        
         .countdown {
-            font-size: 1.5em;
-            color: #4CAF50;
+            font-size: 1.8em;
+            color: #19c1ff;
             font-weight: bold;
+            text-shadow: 0 0 10px rgba(25, 193, 255, 0.5);
+        }
+        
+        .status-message {
+            color: #19c1ff;
+            font-size: 1.1em;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(25, 193, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(25, 193, 255, 0.2);
+        }
+        
+        .social-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(25, 193, 255, 0.2);
+        }
+        
+        .social-links a {
+            color: #19c1ff;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 8px 15px;
+            border: 1px solid rgba(25, 193, 255, 0.3);
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+        
+        .social-links a:hover {
+            background: rgba(25, 193, 255, 0.1);
+            border-color: #19c1ff;
+            transform: translateY(-1px);
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { 
+                padding: 20px 15px; 
+                width: 95%;
+                margin-top: 20px;
+            }
+            .logo { font-size: 3em; }
+            h1 { font-size: 1.5em; }
+            .download-btn { 
+                padding: 12px 25px; 
+                font-size: 15px; 
+                width: 90%;
+            }
+            .info-box, .warning { 
+                padding: 15px; 
+                margin: 15px 0; 
+            }
+            .countdown { font-size: 1.5em; }
+        }
+        
+        @media (max-width: 480px) {
+            .container { width: 98%; }
+            .logo { font-size: 2.5em; }
+            h1 { font-size: 1.3em; }
+            .download-btn { width: 100%; }
         }
     </style>
     <script>
+        // Create animated background particles
+        function createParticles() {
+            const bgAnimation = document.querySelector('.bg-animation');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 8 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+                bgAnimation.appendChild(particle);
+            }
+        }
+        
         let countdown = 3;
         function updateCountdown() {
-            document.getElementById('countdown').textContent = countdown;
+            const countdownEl = document.getElementById('countdown');
+            const messageEl = document.getElementById('message');
+            
+            if (countdownEl) {
+                countdownEl.textContent = countdown;
+            }
+            
             if (countdown > 0) {
                 countdown--;
                 setTimeout(updateCountdown, 1000);
             } else {
-                document.getElementById('message').textContent = 'Download starting...';
+                if (messageEl) {
+                    messageEl.innerHTML = '<div class="status-message">🚀 Download Starting...</div>';
+                }
                 // Trigger download
                 window.location.href = 'swarm.pem';
             }
         }
-        window.onload = updateCountdown;
+        
+        window.onload = function() {
+            createParticles();
+            updateCountdown();
+        };
     </script>
 </head>
 <body>
+    <div class="bg-animation"></div>
+    
+    <div class="watermark">
+        Testnet Terminal © 2025
+    </div>
+    
     <div class="container">
         <div class="logo">🔐</div>
         <h1>Swarm.pem Ready for Download</h1>
         <h3>Testnet Terminal - Gensyn AI</h3>
         
         <div class="info-box">
-            <h3>📄 File Information</h3>
+            <h4>📄 File Information</h4>
             <p><strong>File:</strong> swarm.pem</p>
             <p><strong>Source:</strong> $SWARM_PEM_PATH</p>
             <p><strong>Size:</strong> $FILE_SIZE</p>
@@ -566,7 +768,7 @@ download_swarm_pem() {
         </div>
         
         <div id="message">
-            <p>Download will start automatically in <span id="countdown" class="countdown">3</span> seconds...</p>
+            <div class="status-message">Download will start automatically in <span id="countdown" class="countdown">3</span> seconds...</div>
         </div>
         
         <a href="swarm.pem" download="swarm.pem" class="download-btn">
@@ -586,7 +788,11 @@ download_swarm_pem() {
             <p>3. Never share this file with anyone</p>
         </div>
         
-        <p>🌐 <a href="https://t.me/TestnetTerminal" target="_blank" style="color: #fff;">Testnet Terminal</a></p>
+        <div class="social-links">
+            <a href="https://t.me/TestnetTerminal" target="_blank">📱 Telegram</a>
+            <a href="https://github.com/TestnetTerminal" target="_blank">🐙 GitHub</a>
+            <a href="https://x.com/TestnetTerminal" target="_blank">🐦 Twitter</a>
+        </div>
     </div>
 </body>
 </html>
