@@ -886,6 +886,162 @@ EOF
     read -p "Press Enter to return to main menu..."
 }
 
+# Delete Gensyn Node completely
+delete_gensyn_node() {
+    echo ""
+    echo -e "${RED}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║                    🗑️ Delete Gensyn AI Node 🗑️                   ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Get current user
+    CURRENT_USER=$(whoami)
+    RL_SWARM_DIR="/home/$CURRENT_USER/rl-swarm"
+    
+    print_warning "⚠️ This will completely remove Gensyn AI Node from your system!"
+    echo ""
+    echo -e "${YELLOW}📋 What will be deleted:${NC}"
+    echo "• rl-swarm directory and all contents"
+    echo "• Screen session 'gensyn' (if running)"
+    echo "• Python virtual environment"
+    echo "• All downloaded files and configurations"
+    echo ""
+    
+    # First confirmation
+    echo -n -e "${WHITE}❓ Are you sure you want to delete Gensyn AI Node? (y/N/Enter=No): ${NC}"
+    read -r first_confirm
+    
+    case "${first_confirm,,}" in
+        y|yes|"")
+            ;;
+        *)
+            print_status "✅ Deletion cancelled. Your Gensyn AI Node is safe!"
+            echo ""
+            read -p "Press Enter to return to main menu..."
+            return
+            ;;
+    esac
+    
+    echo ""
+    print_warning "🚨 FINAL WARNING - BACKUP YOUR swarm.pem FILE!"
+    echo ""
+    echo -e "${RED}⚠️ Before I delete everything, have you saved your swarm.pem file?${NC}"
+    echo -e "${YELLOW}📄 Note: Once deleted, your swarm.pem cannot be recovered!${NC}"
+    echo -e "${CYAN}💡 You can download it from: https://app.gensyn.ai/${NC}"
+    echo ""
+    
+    # Second confirmation - more specific about swarm.pem
+    echo -n -e "${WHITE}❓ Have you backed up your swarm.pem? Still want to delete? (y/N): ${NC}"
+    read -r second_confirm
+    
+    case "${second_confirm,,}" in
+        y|yes|"")
+            ;;
+        *)
+            print_status "✅ Deletion cancelled. Please backup your swarm.pem first!"
+            echo ""
+            if [ -f "$RL_SWARM_DIR/swarm.pem" ]; then
+                echo -e "${GREEN}💡 You can use Option 3 to download your swarm.pem file${NC}"
+            fi
+            echo ""
+            read -p "Press Enter to return to main menu..."
+            return
+            ;;
+    esac
+    
+    echo ""
+    print_error "🔥 FINAL CONFIRMATION - THIS IS IRREVERSIBLE!"
+    echo -e "${RED}This will permanently delete ALL Gensyn AI Node data!${NC}"
+    echo ""
+    
+    # Third and final confirmation
+    echo -n -e "${WHITE}❓ Type 'DELETE' to confirm permanent deletion: ${NC}"
+    read -r final_confirm
+    
+    if [ "$final_confirm" != "DELETE" ]; then
+        print_status "✅ Deletion cancelled. Incorrect confirmation text."
+        echo ""
+        read -p "Press Enter to return to main menu..."
+        return
+    fi
+    
+    echo ""
+    print_status "🗑️ Starting deletion process..."
+    
+    # Stop screen session if running
+    if screen -list | grep -q "gensyn"; then
+        print_status "🔄 Stopping Gensyn screen session..."
+        screen -S gensyn -X quit 2>/dev/null || true
+        print_success "✅ Screen session stopped"
+    fi
+    
+    # Delete rl-swarm directory
+    if [ -d "$RL_SWARM_DIR" ]; then
+        print_status "📁 Removing rl-swarm directory..."
+        rm -rf "$RL_SWARM_DIR"
+        print_success "✅ rl-swarm directory deleted"
+    else
+        print_warning "⚠️ rl-swarm directory not found (already deleted?)"
+    fi
+    
+    # Clean up any remaining processes
+    print_status "🔍 Cleaning up any remaining processes..."
+    pkill -f "run_rl_swarm" 2>/dev/null || true
+    pkill -f "rl-swarm" 2>/dev/null || true
+    
+    # Remove any systemd services if they were created
+    if [ -f "/etc/systemd/system/gensyn.service" ]; then
+        print_status "🔄 Removing systemd service..."
+        $SUDO_CMD systemctl stop gensyn.service 2>/dev/null || true
+        $SUDO_CMD systemctl disable gensyn.service 2>/dev/null || true
+        $SUDO_CMD rm -f /etc/systemd/system/gensyn.service
+        $SUDO_CMD systemctl daemon-reload
+        print_success "✅ Systemd service removed"
+    fi
+    
+    # Clean up any cron jobs (if any were set)
+    print_status "🔄 Checking for scheduled tasks..."
+    (crontab -l 2>/dev/null | grep -v "gensyn\|rl-swarm" | crontab -) 2>/dev/null || true
+    
+    sleep 2
+    
+    # Display completion banner
+    clear
+    echo ""
+    echo -e "${BLUE}████████╗███████╗███████╗████████╗███╗   ██╗███████╗████████╗    ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     ${NC}"
+    echo -e "${BLUE}╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝████╗  ██║██╔════╝╚══██╔══╝    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║     ${NC}"
+    echo -e "${BLUE}   ██║   █████╗  ███████╗   ██║   ██╔██╗ ██║█████╗     ██║          ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║     ${NC}"
+    echo -e "${BLUE}   ██║   ██╔══╝  ╚════██║   ██║   ██║╚██╗██║██╔══╝     ██║          ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║     ${NC}"
+    echo -e "${BLUE}   ██║   ███████╗███████║   ██║   ██║ ╚████║███████╗   ██║          ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗${NC}"
+    echo -e "${BLUE}   ╚═╝   ╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═══╝╚══════╝   ╚═╝          ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝${NC}"
+    echo ""
+    echo -e "${WHITE}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${WHITE}║                    🗑️ DELETION COMPLETED 🗑️                     ║${NC}"
+    echo -e "${WHITE}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${GREEN}✅ All things related to Gensyn & RL-Swarm have been deleted from your system!${NC}"
+    echo ""
+    echo -e "${CYAN}📋 What was removed:${NC}"
+    echo -e "${YELLOW}   • ${NC}rl-swarm directory: $RL_SWARM_DIR"
+    echo -e "${YELLOW}   • ${NC}Screen session: gensyn"
+    echo -e "${YELLOW}   • ${NC}All configuration files"
+    echo -e "${YELLOW}   • ${NC}Python virtual environment"
+    echo -e "${YELLOW}   • ${NC}All downloaded repositories"
+    echo ""
+    echo -e "${PURPLE}🙏 Thank you for using Testnet Terminal's OneClick Setup!${NC}"
+    echo ""
+    echo -e "${CYAN}🔗 Stay Connected:${NC}"
+    echo -e "${YELLOW}📱 Telegram: ${NC}https://t.me/TestnetTerminal"
+    echo -e "${YELLOW}🐙 GitHub: ${NC}https://github.com/TestnetTerminal" 
+    echo -e "${YELLOW}🐦 Twitter: ${NC}https://x.com/TestnetTerminal"
+    echo -e "${YELLOW}🆘 Support: ${NC}https://t.me/Amit3701"
+    echo ""
+    echo -e "${GREEN}💡 You can reinstall anytime by running this script again!${NC}"
+    echo ""
+    
+    read -p "Press Enter to return to main menu..."
+}
+
 # Exit function
 exit_script() {
     echo ""
