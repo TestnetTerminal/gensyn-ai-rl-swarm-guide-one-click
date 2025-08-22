@@ -446,24 +446,40 @@ download_swarm_pem() {
         echo -e "${CYAN}   Location: ${NC}$SWARM_PEM_PATH"
         echo ""
         
-        # Ask if user wants to tunnel the file for download
-        echo -n -e "${WHITE}Do you want to create a tunnel to download this file? (y/N): ${NC}"
-        read -r tunnel_choice
+        # Ask if user wants to create a download server for the file
+        echo -n -e "${WHITE}Do you want to create a download server for swarm.pem? (y/N): ${NC}"
+        read -r download_choice
         
-        case "${tunnel_choice,,}" in
+        case "${download_choice,,}" in
             y|yes)
-                print_status "🌐 Setting up direct file server for swarm.pem download..."
+                print_status "🌐 Setting up download server for swarm.pem..."
                 
-                # Change to rl-swarm directory
-                cd "$RL_SWARM_DIR"
+                # Find an available port (try 8080, 8081, 8082, etc.)
+                DOWNLOAD_PORT=8080
+                while lsof -i:$DOWNLOAD_PORT &>/dev/null; do
+                    ((DOWNLOAD_PORT++))
+                    if [ $DOWNLOAD_PORT -gt 8090 ]; then
+                        print_error "❌ No available ports found between 8080-8090"
+                        return
+                    fi
+                done
                 
-                # Create a simple HTML page for download that auto-starts download
+                print_status "🔍 Using port: $DOWNLOAD_PORT"
+                
+                # Create a temporary directory for the download server
+                TEMP_DOWNLOAD_DIR=$(mktemp -d)
+                cd "$TEMP_DOWNLOAD_DIR"
+                
+                # Copy the swarm.pem file to temp directory
+                cp "$SWARM_PEM_PATH" "./swarm.pem"
+                
+                # Create a download page
                 cat > index.html << EOF
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Swarm.pem Download - Testnet Terminal</title>
-    <meta http-equiv="refresh" content="2;url=swarm.pem">
+    <title>Download swarm.pem - Testnet Terminal</title>
+    <meta http-equiv="refresh" content="3;url=swarm.pem">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -527,8 +543,8 @@ download_swarm_pem() {
                 countdown--;
                 setTimeout(updateCountdown, 1000);
             } else {
-                document.getElementById('message').textContent = 'Download should start automatically...';
-                // Force download
+                document.getElementById('message').textContent = 'Download starting...';
+                // Trigger download
                 window.location.href = 'swarm.pem';
             }
         }
@@ -538,34 +554,35 @@ download_swarm_pem() {
 <body>
     <div class="container">
         <div class="logo">🔐</div>
-        <h1>Swarm.pem Download Ready</h1>
+        <h1>Swarm.pem Ready for Download</h1>
         <h3>Testnet Terminal - Gensyn AI</h3>
         
         <div class="info-box">
             <h3>📄 File Information</h3>
             <p><strong>File:</strong> swarm.pem</p>
-            <p><strong>Location:</strong> $SWARM_PEM_PATH</p>
-            <p><strong>User:</strong> $CURRENT_USER</p>
+            <p><strong>Source:</strong> $SWARM_PEM_PATH</p>
             <p><strong>Size:</strong> $FILE_SIZE</p>
+            <p><strong>Modified:</strong> $FILE_DATE</p>
         </div>
         
         <div id="message">
             <p>Download will start automatically in <span id="countdown" class="countdown">3</span> seconds...</p>
         </div>
         
-        <a href="swarm.pem" download="swarm.pem" class="download-btn" onclick="this.style.background='#45a049'; this.textContent='✅ Downloaded!';">
-            📥 Click Here if Download Doesn't Start
+        <a href="swarm.pem" download="swarm.pem" class="download-btn">
+            📥 Click Here to Download Now
         </a>
         
         <div class="warning">
             <h4>⚠️ Security Notice</h4>
             <p>Keep your swarm.pem file secure and don't share it publicly!</p>
+            <p>This download server is temporary and will close when you stop it.</p>
         </div>
         
         <div class="info-box">
-            <h4>📋 What to do after download:</h4>
+            <h4>📋 After downloading:</h4>
             <p>1. Save the file securely on your local machine</p>
-            <p>2. Copy it to your rl-swarm directory when needed</p>
+            <p>2. Use it in your local rl-swarm setup when needed</p>
             <p>3. Never share this file with anyone</p>
         </div>
         
@@ -575,51 +592,73 @@ download_swarm_pem() {
 </html>
 EOF
 
-                print_success "🚀 Starting file server on port 3000..."
-                print_status "📥 The server will serve your swarm.pem file directly"
+                print_success "🚀 Starting download server on port $DOWNLOAD_PORT..."
+                print_status "📥 Server will serve your swarm.pem file for download"
                 echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the server${NC}"
                 echo ""
                 
                 if command -v python3 &> /dev/null; then
                     # Start Python HTTP server in background
-                    python3 -m http.server 3000 > /dev/null 2>&1 &
+                    python3 -m http.server $DOWNLOAD_PORT > /dev/null 2>&1 &
                     SERVER_PID=$!
-                    sleep 3
+                    sleep 2
                     
-                    if command -v cloudflared &> /dev/null; then
-                        print_success "🌐 Starting Cloudflare tunnel..."
-                        echo -e "${CYAN}📋 The tunnel URL will allow direct download of your swarm.pem${NC}"
-                        echo -e "${GREEN}💡 Just open the URL in your browser to download the file${NC}"
-                        echo ""
-                        
-                        # Start cloudflared tunnel
-                        cloudflared tunnel --url http://localhost:3000
-                        
-                        # Clean up when tunnel stops
-                        kill $SERVER_PID 2>/dev/null || true
+                    # Check if server started successfully
+                    if kill -0 $SERVER_PID 2>/dev/null; then
+                        if command -v cloudflared &> /dev/null; then
+                            print_success "🌐 Starting Cloudflare tunnel for swarm.pem download..."
+                            echo -e "${CYAN}📋 The tunnel will provide a secure download link${NC}"
+                            echo -e "${GREEN}💡 Open the tunnel URL in your browser to download swarm.pem${NC}"
+                            echo ""
+                            
+                            # Start cloudflared tunnel pointing to our download server
+                            cloudflared tunnel --url http://localhost:$DOWNLOAD_PORT
+                            
+                            # Clean up when tunnel stops
+                            kill $SERVER_PID 2>/dev/null || true
+                        else
+                            print_warning "⚠️ Cloudflared not found. Server running locally on port $DOWNLOAD_PORT"
+                            echo "Install cloudflared first using option 2 for external access."
+                            echo -e "${CYAN}📋 Local access: ${NC}http://localhost:$DOWNLOAD_PORT"
+                            echo -e "${CYAN}📋 Direct file: ${NC}http://localhost:$DOWNLOAD_PORT/swarm.pem"
+                            echo ""
+                            echo "Press Ctrl+C to stop the server..."
+                            wait $SERVER_PID
+                        fi
                     else
-                        print_warning "⚠️ Cloudflared not found. Server running on localhost:3000"
-                        echo "Install cloudflared first using option 2, then try again."
-                        echo -e "${CYAN}📋 You can access the file at: ${NC}http://localhost:3000/swarm.pem"
-                        
-                        # Wait for user to stop server
-                        echo "Press Ctrl+C to stop the server..."
-                        wait $SERVER_PID
+                        print_error "❌ Failed to start HTTP server"
                     fi
-                    
-                    # Clean up HTML file
-                    rm -f index.html
                 else
-                    print_error "❌ Python3 not found. Cannot start HTTP server."
+                    print_error "❌ Python3 not found. Cannot start download server."
                     echo ""
-                    print_status "📁 Alternative: Copy the file manually"
-                    echo -e "${CYAN}📋 File location: ${NC}$SWARM_PEM_PATH"
-                    echo -e "${YELLOW}💡 You can use SCP or other file transfer methods${NC}"
+                    print_status "📁 Alternative methods to get your file:"
+                    echo -e "${CYAN}1. SCP: ${NC}scp user@yourserver:$SWARM_PEM_PATH ./swarm.pem"
+                    echo -e "${CYAN}2. Cat and copy: ${NC}cat $SWARM_PEM_PATH"
+                    echo -e "${CYAN}3. Base64 encode: ${NC}base64 $SWARM_PEM_PATH"
                 fi
+                
+                # Clean up temporary directory
+                cd "$RL_SWARM_DIR"
+                rm -rf "$TEMP_DOWNLOAD_DIR"
                 ;;
             *)
-                print_status "📁 swarm.pem is ready at: $SWARM_PEM_PATH"
-                echo "You can copy or use this file as needed."
+                print_status "📁 swarm.pem is available at: $SWARM_PEM_PATH"
+                echo ""
+                echo -e "${YELLOW}💡 Alternative download methods:${NC}"
+                echo -e "${CYAN}1. SCP Command: ${NC}"
+                echo "   scp $CURRENT_USER@YOUR_SERVER_IP:$SWARM_PEM_PATH ./swarm.pem"
+                echo ""
+                echo -e "${CYAN}2. Display file content (copy manually): ${NC}"
+                echo -n -e "${WHITE}Show file content? (y/N): ${NC}"
+                read -r show_content
+                if [[ "${show_content,,}" == "y" || "${show_content,,}" == "yes" ]]; then
+                    echo ""
+                    echo -e "${YELLOW}📄 swarm.pem content:${NC}"
+                    echo -e "${CYAN}════════════════════════════════════════${NC}"
+                    cat "$SWARM_PEM_PATH"
+                    echo -e "${CYAN}════════════════════════════════════════${NC}"
+                    echo -e "${GREEN}💡 Copy the above content and save as 'swarm.pem' on your local machine${NC}"
+                fi
                 ;;
         esac
         
@@ -629,7 +668,7 @@ EOF
         echo -e "${YELLOW}💡 To get your swarm.pem file:${NC}"
         echo "1. Make sure you've run option 1 (Install Gensyn AI Node) first"
         echo "2. Copy your swarm.pem file to: $RL_SWARM_DIR/"
-        echo "3. Get your swarm.pem from: https://app.gensyn.ai/"
+        echo "3. Download your swarm.pem from: https://app.gensyn.ai/"
         echo ""
         echo -e "${CYAN}📋 Current rl-swarm directory contents:${NC}"
         if [ -d "$RL_SWARM_DIR" ]; then
