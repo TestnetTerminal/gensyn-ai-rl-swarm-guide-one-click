@@ -298,6 +298,28 @@ install_cloudflared() {
     print_status "📦 Package Manager: $PKG_MANAGER"
     echo ""
 
+    # Check port 3000 immediately
+    print_status "🔍 Checking if port 3000 is active..."
+    PORT_3000_ACTIVE=false
+    
+    if command -v lsof &> /dev/null && lsof -i:3000 &> /dev/null; then
+        PORT_3000_ACTIVE=true
+        print_success "✅ Port 3000 is active and ready for tunneling!"
+        
+        # Get process info for port 3000
+        PORT_INFO=$(lsof -i:3000 2>/dev/null | tail -n +2 | head -1)
+        if [ -n "$PORT_INFO" ]; then
+            PROCESS_NAME=$(echo "$PORT_INFO" | awk '{print $1}')
+            PID=$(echo "$PORT_INFO" | awk '{print $2}')
+            print_status "📋 Process: $PROCESS_NAME (PID: $PID)"
+        fi
+        echo ""
+    else
+        print_warning "⚠️ Port 3000 is not active."
+        echo -e "${YELLOW}💡 No application is currently running on port 3000${NC}"
+        echo ""
+    fi
+
     # Install required tools
     print_status "📦 Installing required tools..."
     $SUDO_CMD $PKG_UPDATE
@@ -365,41 +387,202 @@ install_cloudflared() {
     fi
 
     echo ""
-    print_status "🔍 Checking if port 3000 is active..."
     
-    if command -v lsof &> /dev/null && lsof -i:3000 &> /dev/null; then
-        print_success "✅ Port 3000 is active!"
-        
+    # Handle tunneling based on port status
+    if [ "$PORT_3000_ACTIVE" = true ]; then
+        echo -e "${GREEN}🚀 Port 3000 is active! Ready to start tunnel...${NC}"
+        echo -e "${YELLOW}⚠️ This will create a public URL accessible from anywhere.${NC}"
         echo ""
-        echo -e "${YELLOW}⚠️ Are you sure you want to tunnel localhost:3000? ${NC}"
-        echo -e "${CYAN}This will create a public URL accessible from anywhere.${NC}"
-        echo ""
-        echo -n -e "${WHITE}Continue? (Y/n/Enter=Yes): ${NC}"
+        echo -n -e "${WHITE}Start Cloudflare tunnel for localhost:3000? (Y/n/Enter=Yes): ${NC}"
         read -r confirm
         
         case "${confirm,,}" in
             n|no)
                 print_warning "🚫 Tunnel cancelled by user."
+                echo ""
+                echo -e "${CYAN}💡 To start tunnel later, run:${NC}"
+                echo -e "${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
                 ;;
             *|y|yes|"")
                 echo ""
                 print_success "🚀 Starting Cloudflare tunnel..."
                 echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the tunnel${NC}"
+                echo -e "${CYAN}📋 The tunnel URL will appear below...${NC}"
                 echo ""
                 sleep 2
                 cloudflared tunnel --url http://localhost:3000
                 ;;
         esac
     else
-        print_warning "⚠️ Port 3000 is not active."
-        echo -e "${YELLOW}Start your application on port 3000 first, then run:${NC}"
-        echo -e "${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+        echo -e "${YELLOW}📋 Port 3000 Status: ${NC}Not Active"
+        echo ""
+        echo -e "${CYAN}💡 To use the tunnel:${NC}"
+        echo "1. Start your application on port 3000"
+        echo "2. Then run: ${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+        echo ""
+        echo -e "${YELLOW}🔍 Common applications that use port 3000:${NC}"
+        echo "• React development server (npm start)"
+        echo "• Node.js applications"
+        echo "• Next.js applications"
+        echo "• Express.js servers"
+        echo "• Gensyn AI Node (if running)"
+        echo ""
+        echo -e "${PURPLE}🛠️ Quick test - Start a simple HTTP server on port 3000?${NC}"
+        echo -n -e "${WHITE}(y/N): ${NC}"
+        read -r test_server
+        
+        case "${test_server,,}" in
+            y|yes)
+                print_status "🚀 Starting test HTTP server on port 3000..."
+                
+                # Create a simple test page
+                TEST_DIR=$(mktemp -d)
+                cd "$TEST_DIR"
+                
+                cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudflared Test - Testnet Terminal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 50px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 { font-size: 3em; margin-bottom: 20px; color: #00d4ff; }
+        .emoji { font-size: 4em; margin-bottom: 20px; }
+        p { font-size: 1.2em; line-height: 1.6; margin-bottom: 15px; }
+        .success { color: #00ff88; font-weight: bold; }
+        .links { margin-top: 30px; }
+        .links a {
+            color: #00d4ff;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 10px 20px;
+            border: 1px solid #00d4ff;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .links a:hover {
+            background: #00d4ff;
+            color: #1e3c72;
+            transform: translateY(-2px);
+        }
+        .status {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00ff88;
+            margin: 20px 0;
+        }
+        .blink { animation: blink 2s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🌐</div>
+        <h1>Cloudflared Test</h1>
+        <div class="status">
+            <p class="success blink">✅ SUCCESS! Your tunnel is working!</p>
+            <p>This test server is running on <strong>localhost:3000</strong></p>
+            <p>And you're accessing it through <strong>Cloudflare Tunnel</strong></p>
+        </div>
+        <p>🎉 Congratulations! Your Cloudflared tunnel is properly configured.</p>
+        <p>🚀 You can now tunnel any application running on port 3000 to the internet securely.</p>
+        <p>⚡ This is brought to you by <strong>Testnet Terminal</strong></p>
+        <div class="links">
+            <a href="https://t.me/TestnetTerminal" target="_blank">📱 Telegram</a>
+            <a href="https://github.com/TestnetTerminal" target="_blank">🐙 GitHub</a>
+            <a href="https://x.com/TestnetTerminal" target="_blank">🐦 Twitter</a>
+        </div>
+        <p style="margin-top: 30px; font-size: 0.9em; opacity: 0.8;">
+            Press Ctrl+C in your terminal to stop this test server and tunnel.
+        </p>
+    </div>
+    <script>
+        // Add some dynamic effects
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.container');
+            container.style.animation = 'fadeIn 1s ease-in';
+            
+            // Add CSS for fadeIn animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>
+EOF
+
+                echo -e "${CYAN}📋 Test page created. Starting server...${NC}"
+                echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the test server and tunnel${NC}"
+                echo ""
+                
+                # Start HTTP server in background
+                if command -v python3 &> /dev/null; then
+                    python3 -m http.server 3000 > /dev/null 2>&1 &
+                    SERVER_PID=$!
+                    sleep 2
+                    
+                    # Check if server started
+                    if kill -0 $SERVER_PID 2>/dev/null && lsof -i:3000 &>/dev/null; then
+                        print_success "✅ Test server started on port 3000"
+                        echo -e "${GREEN}🚀 Starting Cloudflare tunnel...${NC}"
+                        echo ""
+                        
+                        # Start tunnel
+                        cloudflared tunnel --url http://localhost:3000
+                        
+                        # Clean up when tunnel stops
+                        kill $SERVER_PID 2>/dev/null || true
+                        cd - > /dev/null
+                        rm -rf "$TEST_DIR"
+                    else
+                        print_error "❌ Failed to start test server"
+                        kill $SERVER_PID 2>/dev/null || true
+                    fi
+                else
+                    print_error "❌ Python3 not found. Cannot start test server."
+                fi
+                ;;
+            *)
+                echo -e "${CYAN}💡 Cloudflared is ready! Start your app on port 3000 and run:${NC}"
+                echo -e "${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+                ;;
+        esac
     fi
     
     echo ""
     read -p "Press Enter to return to main menu..."
 }
-
 # Download Swarm.pem file
 download_swarm_pem() {
     echo ""
