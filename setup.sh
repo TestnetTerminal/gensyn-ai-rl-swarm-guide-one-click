@@ -298,6 +298,26 @@ install_cloudflared() {
     print_status "📦 Package Manager: $PKG_MANAGER"
     echo ""
 
+    # Function to get the correct local URL
+    get_local_url() {
+        local port="3000"
+        
+        # Try to detect if we're in WSL
+        if [[ "$OS" == "WSL" ]]; then
+            # In WSL, we might need to use the Windows host IP
+            local wsl_ip=$(hostname -I | awk '{print $1}')
+            if [ -n "$wsl_ip" ]; then
+                echo "http://${wsl_ip}:${port}"
+            else
+                echo "http://localhost:${port}"
+            fi
+        else
+            echo "http://localhost:${port}"
+        fi
+    }
+
+    LOCAL_URL=$(get_local_url)
+
     # Check port 3000 immediately
     print_status "🔍 Checking if port 3000 is active..."
     PORT_3000_ACTIVE=false
@@ -316,7 +336,7 @@ install_cloudflared() {
         echo ""
     else
         print_warning "⚠️ Port 3000 is not active."
-        echo -e "${YELLOW}💡 No application is currently running on port 3000${NC}"
+        print_status "💡 No application is currently running on port 3000"
         echo ""
     fi
 
@@ -401,7 +421,7 @@ install_cloudflared() {
                 print_warning "🚫 Tunnel cancelled by user."
                 echo ""
                 echo -e "${CYAN}💡 To start tunnel later, run:${NC}"
-                echo -e "${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+                echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
                 ;;
             *|y|yes|"")
                 echo ""
@@ -410,19 +430,19 @@ install_cloudflared() {
                 echo -e "${CYAN}📋 The tunnel URL will appear below...${NC}"
                 echo ""
                 sleep 2
-                cloudflared tunnel --url http://localhost:3000
+                cloudflared tunnel --url ${LOCAL_URL}
                 ;;
         esac
     else
-        echo -e "${YELLOW}📋 Port 3000 Status: ${NC}Not Active"
+        print_status "📋 Port 3000 Status: Not Active"
         echo ""
         echo -e "${CYAN}💡 To use the tunnel:${NC}"
-        echo "1. Start your application on port 3000"
-        echo "2. Then run: ${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+        echo "1. Start your application on port 3000"  
+        echo -e "2. Then run: ${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
         echo ""
         echo -e "${YELLOW}🔍 Common applications that use port 3000:${NC}"
         echo "• React development server (npm start)"
-        echo "• Node.js applications"
+        echo "• Node.js applications" 
         echo "• Next.js applications"
         echo "• Express.js servers"
         echo "• Gensyn AI Node (if running)"
@@ -559,7 +579,7 @@ EOF
                         echo ""
                         
                         # Start tunnel
-                        cloudflared tunnel --url http://localhost:3000
+                        cloudflared tunnel --url ${LOCAL_URL}
                         
                         # Clean up when tunnel stops
                         kill $SERVER_PID 2>/dev/null || true
@@ -574,8 +594,8 @@ EOF
                 fi
                 ;;
             *)
-                echo -e "${CYAN}💡 Cloudflared is ready! Start your app on port 3000 and run:${NC}"
-                echo -e "${GREEN}cloudflared tunnel --url http://localhost:3000${NC}"
+                print_status "💡 Cloudflared is ready! Start your app on port 3000 and run:"
+                echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
                 ;;
         esac
     fi
@@ -583,6 +603,7 @@ EOF
     echo ""
     read -p "Press Enter to return to main menu..."
 }
+
 # Download Swarm.pem file
 download_swarm_pem() {
     echo ""
