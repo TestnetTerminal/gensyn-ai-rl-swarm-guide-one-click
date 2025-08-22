@@ -65,7 +65,18 @@ bash <(curl -s https://raw.githubusercontent.com/TestnetTerminal/gensyn-ai-rl-sw
 - Shows SCP command for manual download
 - Displays file content for copy-paste
 
-### **4. ❌ Exit**
+### **4. 🗑️  Delete Gensyn AI Node**
+**What happens when you press 5:**
+
+- ✅ Displays warnings and confirmation prompts before deleting anything.
+- ✅ Asks the user 3 times to confirm they want to delete the Gensyn AI Node, with emphasis on backing up the swarm.pem file.
+- ✅Stops the "gensyn" screen session if it's running.
+- ✅Deletes the rl-swarm directory and all its contents.
+- ✅Kills any related background processes (run_rl_swarm, etc.).
+- ✅Removes the Gensyn systemd service if it exists.
+- ✅Cleans up related cron jobs.
+
+### **5. ❌ Exit**
 **What happens when you press 4:**
 - ✅ Shows thank you message
 - ✅ Displays all our social links
