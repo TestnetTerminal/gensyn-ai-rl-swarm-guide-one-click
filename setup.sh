@@ -436,146 +436,43 @@ install_cloudflared() {
     else
         print_status "📋 Port 3000 Status: Not Active"
         echo ""
-        echo -e "${CYAN}💡 To use the tunnel:${NC}"
+        print_status "💡 To use the tunnel:"
         echo "1. Start your application on port 3000"  
-        echo -e "2. Then run: ${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
+        print_status "2. Then run: cloudflared tunnel --url ${LOCAL_URL}"
         echo ""
-        echo -e "${YELLOW}🔍 Common applications that use port 3000:${NC}"
+        print_status "🔍 Common applications that use port 3000:"
         echo "• React development server (npm start)"
         echo "• Node.js applications" 
         echo "• Next.js applications"
         echo "• Express.js servers"
         echo "• Gensyn AI Node (if running)"
         echo ""
-        echo -e "${PURPLE}🛠️ Quick test - Start a simple HTTP server on port 3000?${NC}"
-        echo -n -e "${WHITE}(y/N): ${NC}"
+        print_status "🛠️ Quick test - Start a simple HTTP server on port 3000 and tunnel it?"
+        echo -n "Press y for Yes, or any other key to skip: "
         read -r test_server
         
         case "${test_server,,}" in
             y|yes)
-                print_status "🚀 Starting test HTTP server on port 3000..."
+                print_status "🚀 Starting simple HTTP server on port 3000..."
                 
-                # Create a simple test page
-                TEST_DIR=$(mktemp -d)
-                cd "$TEST_DIR"
-                
-                cat > index.html << 'EOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloudflared Test - Testnet Terminal</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 50px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 90%;
-        }
-        h1 { font-size: 3em; margin-bottom: 20px; color: #00d4ff; }
-        .emoji { font-size: 4em; margin-bottom: 20px; }
-        p { font-size: 1.2em; line-height: 1.6; margin-bottom: 15px; }
-        .success { color: #00ff88; font-weight: bold; }
-        .links { margin-top: 30px; }
-        .links a {
-            color: #00d4ff;
-            text-decoration: none;
-            margin: 0 15px;
-            padding: 10px 20px;
-            border: 1px solid #00d4ff;
-            border-radius: 25px;
-            display: inline-block;
-            margin: 10px 5px;
-            transition: all 0.3s ease;
-        }
-        .links a:hover {
-            background: #00d4ff;
-            color: #1e3c72;
-            transform: translateY(-2px);
-        }
-        .status {
-            background: rgba(0, 255, 136, 0.1);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #00ff88;
-            margin: 20px 0;
-        }
-        .blink { animation: blink 2s infinite; }
-        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.5; } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="emoji">🌐</div>
-        <h1>Cloudflared Test</h1>
-        <div class="status">
-            <p class="success blink">✅ SUCCESS! Your tunnel is working!</p>
-            <p>This test server is running on <strong>localhost:3000</strong></p>
-            <p>And you're accessing it through <strong>Cloudflare Tunnel</strong></p>
-        </div>
-        <p>🎉 Congratulations! Your Cloudflared tunnel is properly configured.</p>
-        <p>🚀 You can now tunnel any application running on port 3000 to the internet securely.</p>
-        <p>⚡ This is brought to you by <strong>Testnet Terminal</strong></p>
-        <div class="links">
-            <a href="https://t.me/TestnetTerminal" target="_blank">📱 Telegram</a>
-            <a href="https://github.com/TestnetTerminal" target="_blank">🐙 GitHub</a>
-            <a href="https://x.com/TestnetTerminal" target="_blank">🐦 Twitter</a>
-        </div>
-        <p style="margin-top: 30px; font-size: 0.9em; opacity: 0.8;">
-            Press Ctrl+C in your terminal to stop this test server and tunnel.
-        </p>
-    </div>
-    <script>
-        // Add some dynamic effects
-        document.addEventListener('DOMContentLoaded', function() {
-            const container = document.querySelector('.container');
-            container.style.animation = 'fadeIn 1s ease-in';
-            
-            // Add CSS for fadeIn animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(30px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            `;
-            document.head.appendChild(style);
-        });
-    </script>
-</body>
-</html>
-EOF
-
-                echo -e "${CYAN}📋 Test page created. Starting server...${NC}"
-                echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the test server and tunnel${NC}"
-                echo ""
-                
-                # Start HTTP server in background
+                # Just start a simple HTTP server without any HTML files
                 if command -v python3 &> /dev/null; then
+                    # Create a minimal temp directory with just a simple message
+                    TEST_DIR=$(mktemp -d)
+                    cd "$TEST_DIR"
+                    echo "🌐 Cloudflared Tunnel Test - Port 3000 is working! 🚀" > index.txt
+                    
+                    print_status "⚡ Starting server..."
                     python3 -m http.server 3000 > /dev/null 2>&1 &
                     SERVER_PID=$!
-                    sleep 2
+                    sleep 3
                     
                     # Check if server started
                     if kill -0 $SERVER_PID 2>/dev/null && lsof -i:3000 &>/dev/null; then
-                        print_success "✅ Test server started on port 3000"
-                        echo -e "${GREEN}🚀 Starting Cloudflare tunnel...${NC}"
+                        print_success "✅ HTTP server started on port 3000"
+                        print_status "🚀 Starting Cloudflare tunnel..."
+                        echo ""
+                        echo "Press Ctrl+C to stop the tunnel and server"
                         echo ""
                         
                         # Start tunnel
@@ -586,16 +483,37 @@ EOF
                         cd - > /dev/null
                         rm -rf "$TEST_DIR"
                     else
-                        print_error "❌ Failed to start test server"
+                        print_error "❌ Failed to start HTTP server on port 3000"
                         kill $SERVER_PID 2>/dev/null || true
+                        rm -rf "$TEST_DIR"
+                    fi
+                elif command -v nc &> /dev/null; then
+                    print_status "⚡ Starting netcat server on port 3000..."
+                    echo "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n🌐 Cloudflared Tunnel Test - Port 3000 is working! 🚀" | nc -l -p 3000 &
+                    NC_PID=$!
+                    sleep 2
+                    
+                    if kill -0 $NC_PID 2>/dev/null; then
+                        print_success "✅ Netcat server started on port 3000"
+                        print_status "🚀 Starting Cloudflare tunnel..."
+                        echo ""
+                        echo "Press Ctrl+C to stop the tunnel"
+                        echo ""
+                        
+                        cloudflared tunnel --url ${LOCAL_URL}
+                        
+                        kill $NC_PID 2>/dev/null || true
+                    else
+                        print_error "❌ Failed to start netcat server"
                     fi
                 else
-                    print_error "❌ Python3 not found. Cannot start test server."
+                    print_error "❌ Neither python3 nor netcat found. Cannot start test server."
+                    print_status "💡 Install python3 or netcat to use the test server feature."
                 fi
                 ;;
             *)
                 print_status "💡 Cloudflared is ready! Start your app on port 3000 and run:"
-                echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
+                print_status "cloudflared tunnel --url ${LOCAL_URL}"
                 ;;
         esac
     fi
