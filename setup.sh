@@ -60,12 +60,13 @@ show_menu() {
     echo ""
     echo -e "${CYAN}Please select an option:${NC}"
     echo ""
-    echo -e "${GREEN}1. 🛠️  Install Gensyn AI Node${NC}"
-    echo -e "${BLUE}2. 🛜 Install Cloudflared and Tunnel${NC}"
+    echo -e "${YELLOW}1. 🛠️  Install Gensyn AI Node${NC}"
+    echo -e "${YELLOW}2. 🛜 Install Cloudflared and Tunnel${NC}"
     echo -e "${YELLOW}3. ⬇️  Download Swarm.pem File${NC}"
+    echo -e "${PURPLE}4. 🗑️  Delete Gensyn AI Node${NC}"
     echo -e "${RED}4. ❌ Exit${NC}"
     echo ""
-    echo -n -e "${WHITE}Select an option (1-4): ${NC}"
+    echo -n -e "${WHITE}Select an option (1-5): ${NC}"
 }
 
 # System detection functions
@@ -1081,6 +1082,9 @@ main() {
                 download_swarm_pem
                 ;;
             4)
+                delete_gensyn_node
+                ;;
+            5)
                 exit_script
                 ;;
             *)
