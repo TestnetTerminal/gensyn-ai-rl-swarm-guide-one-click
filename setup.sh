@@ -300,25 +300,59 @@ install_cloudflared() {
 
     LOCAL_URL="http://localhost:3000"
 
-    # Check port 3000 immediately
+    # Check port 3000 with multiple methods
     print_status "🔍 Checking if port 3000 is active..."
     PORT_3000_ACTIVE=false
+    PORT_CHECK_METHOD=""
     
-    if command -v lsof &> /dev/null && lsof -i:3000 &> /dev/null; then
-        PORT_3000_ACTIVE=true
+    # Method 1: lsof
+    if command -v lsof &> /dev/null; then
+        if lsof -i:3000 &> /dev/null; then
+            PORT_3000_ACTIVE=true
+            PORT_CHECK_METHOD="lsof"
+            # Get process info
+            PORT_INFO=$(lsof -i:3000 2>/dev/null | tail -n +2 | head -1)
+            if [ -n "$PORT_INFO" ]; then
+                PROCESS_NAME=$(echo "$PORT_INFO" | awk '{print $1}')
+                PID=$(echo "$PORT_INFO" | awk '{print $2}')
+            fi
+        fi
+    fi
+    
+    # Method 2: netstat (fallback)
+    if [ "$PORT_3000_ACTIVE" = false ] && command -v netstat &> /dev/null; then
+        if netstat -tuln 2>/dev/null | grep -q ":3000 "; then
+            PORT_3000_ACTIVE=true
+            PORT_CHECK_METHOD="netstat"
+        fi
+    fi
+    
+    # Method 3: ss (fallback)
+    if [ "$PORT_3000_ACTIVE" = false ] && command -v ss &> /dev/null; then
+        if ss -tuln 2>/dev/null | grep -q ":3000 "; then
+            PORT_3000_ACTIVE=true
+            PORT_CHECK_METHOD="ss"
+        fi
+    fi
+    
+    # Method 4: curl test (fallback)
+    if [ "$PORT_3000_ACTIVE" = false ]; then
+        if curl -s --connect-timeout 2 http://localhost:3000 &>/dev/null; then
+            PORT_3000_ACTIVE=true
+            PORT_CHECK_METHOD="curl"
+        fi
+    fi
+    
+    if [ "$PORT_3000_ACTIVE" = true ]; then
         print_success "✅ Port 3000 is active and ready for tunneling!"
-        
-        # Get process info for port 3000
-        PORT_INFO=$(lsof -i:3000 2>/dev/null | tail -n +2 | head -1)
-        if [ -n "$PORT_INFO" ]; then
-            PROCESS_NAME=$(echo "$PORT_INFO" | awk '{print $1}')
-            PID=$(echo "$PORT_INFO" | awk '{print $2}')
+        print_status "📋 Detection method: $PORT_CHECK_METHOD"
+        if [ -n "$PROCESS_NAME" ] && [ -n "$PID" ]; then
             print_status "📋 Process: $PROCESS_NAME (PID: $PID)"
         fi
         echo ""
     else
-        print_warning "⚠️ Port 3000 is not active."
-        print_status "💡 No application is currently running on port 3000"
+        print_warning "⚠️ Port 3000 detection: Not active"
+        print_status "💡 No application detected on port 3000"
         echo ""
     fi
 
@@ -390,45 +424,48 @@ install_cloudflared() {
 
     echo ""
     
-    # Handle tunneling based on port status
+    # Always offer tunneling option regardless of detection
     if [ "$PORT_3000_ACTIVE" = true ]; then
-        echo -e "${GREEN}🚀 Port 3000 is active! Ready to start tunnel...${NC}"
-        echo -e "${YELLOW}⚠️ This will create a public URL accessible from anywhere.${NC}"
-        echo -e "${CYAN}💡 The tunnel will forward external traffic to your localhost:3000 service${NC}"
-        echo ""
-        echo -n -e "${WHITE}Start Cloudflare tunnel for localhost:3000? (Y/n): ${NC}"
-        read -r confirm
-        
-        case "${confirm,,}" in
-            n|no)
-                print_warning "🚫 Tunnel cancelled by user."
-                echo ""
-                echo -e "${CYAN}💡 To start tunnel later, run:${NC}"
-                echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
-                ;;
-            *|y|yes|"")
-                echo ""
-                print_success "🚀 Starting Cloudflare tunnel for localhost:3000..."
-                echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the tunnel${NC}"
-                echo -e "${CYAN}📋 The tunnel URL will appear below - use it to access your Gensyn node remotely${NC}"
-                echo ""
-                sleep 2
-                cloudflared tunnel --url ${LOCAL_URL}
-                ;;
-        esac
+        echo -e "${GREEN}🚀 Port 3000 detected as active! Ready to tunnel...${NC}"
     else
-        print_status "📋 Port 3000 Status: Not Active"
-        echo ""
-        print_status "💡 Next steps:"
-        echo "1. First run option 1 to install and start Gensyn AI Node"
-        echo "2. Wait for the node to start on port 3000"
-        echo "3. Then run this option again to tunnel it"
-        echo ""
-        print_status "🔍 Or manually start tunnel later with:"
-        echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
-        echo ""
-        print_warning "⚠️ The tunnel will only work when something is running on port 3000"
+        echo -e "${YELLOW}⚠️ Port 3000 not detected, but you can still try tunneling${NC}"
+        print_status "💡 Detection might be incorrect or service may be starting up"
     fi
+    
+    echo -e "${CYAN}💡 The tunnel will forward external traffic to localhost:3000${NC}"
+    echo -e "${YELLOW}⚠️ This creates a public URL accessible from anywhere${NC}"
+    echo ""
+    echo -n -e "${WHITE}Start Cloudflare tunnel for localhost:3000? (Y/n): ${NC}"
+    read -r confirm
+    
+    case "${confirm,,}" in
+        n|no)
+            print_warning "🚫 Tunnel cancelled by user."
+            echo ""
+            echo -e "${CYAN}💡 To start tunnel manually later:${NC}"
+            echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
+            echo ""
+            if [ "$PORT_3000_ACTIVE" = false ]; then
+                print_status "📝 If port 3000 is actually running:"
+                echo "• Make sure Gensyn node is started (option 1)"
+                echo "• Check with: lsof -i:3000 or netstat -tuln | grep 3000"
+                echo "• Or simply try the tunnel anyway - it will show if connection fails"
+            fi
+            ;;
+        *|y|yes|"")
+            echo ""
+            if [ "$PORT_3000_ACTIVE" = false ]; then
+                print_warning "🔍 Port detection showed inactive, but proceeding with tunnel..."
+                print_status "💡 If nothing is on port 3000, the tunnel will show connection errors"
+            fi
+            print_success "🚀 Starting Cloudflare tunnel for localhost:3000..."
+            echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the tunnel${NC}"
+            echo -e "${CYAN}📋 The tunnel URL will appear below - use it to access your service remotely${NC}"
+            echo ""
+            sleep 2
+            cloudflared tunnel --url ${LOCAL_URL}
+            ;;
+    esac
     
     echo ""
     read -p "Press Enter to return to main menu..."
