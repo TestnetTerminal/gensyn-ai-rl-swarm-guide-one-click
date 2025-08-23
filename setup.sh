@@ -64,7 +64,7 @@ show_menu() {
     echo -e "${YELLOW}2. 🛜 Install Cloudflared and Tunnel${NC}"
     echo -e "${YELLOW}3. ⬇️  Download Swarm.pem File${NC}"
     echo -e "${PURPLE}4. 🗑️  Delete Gensyn AI Node${NC}"
-    echo -e "${RED}4. ❌ Exit${NC}"
+    echo -e "${RED}5. ❌ Exit${NC}"
     echo ""
     echo -n -e "${WHITE}Select an option (1-5): ${NC}"
 }
@@ -298,25 +298,7 @@ install_cloudflared() {
     print_status "📦 Package Manager: $PKG_MANAGER"
     echo ""
 
-    # Function to get the correct local URL
-    get_local_url() {
-        local port="3000"
-        
-        # Try to detect if we're in WSL
-        if [[ "$OS" == "WSL" ]]; then
-            # In WSL, we might need to use the Windows host IP
-            local wsl_ip=$(hostname -I | awk '{print $1}')
-            if [ -n "$wsl_ip" ]; then
-                echo "http://${wsl_ip}:${port}"
-            else
-                echo "http://localhost:${port}"
-            fi
-        else
-            echo "http://localhost:${port}"
-        fi
-    }
-
-    LOCAL_URL=$(get_local_url)
+    LOCAL_URL="http://localhost:3000"
 
     # Check port 3000 immediately
     print_status "🔍 Checking if port 3000 is active..."
@@ -412,8 +394,9 @@ install_cloudflared() {
     if [ "$PORT_3000_ACTIVE" = true ]; then
         echo -e "${GREEN}🚀 Port 3000 is active! Ready to start tunnel...${NC}"
         echo -e "${YELLOW}⚠️ This will create a public URL accessible from anywhere.${NC}"
+        echo -e "${CYAN}💡 The tunnel will forward external traffic to your localhost:3000 service${NC}"
         echo ""
-        echo -n -e "${WHITE}Start Cloudflare tunnel for localhost:3000? (Y/n/Enter=Yes): ${NC}"
+        echo -n -e "${WHITE}Start Cloudflare tunnel for localhost:3000? (Y/n): ${NC}"
         read -r confirm
         
         case "${confirm,,}" in
@@ -425,9 +408,9 @@ install_cloudflared() {
                 ;;
             *|y|yes|"")
                 echo ""
-                print_success "🚀 Starting Cloudflare tunnel..."
+                print_success "🚀 Starting Cloudflare tunnel for localhost:3000..."
                 echo -e "${YELLOW}⚠️ Press Ctrl+C to stop the tunnel${NC}"
-                echo -e "${CYAN}📋 The tunnel URL will appear below...${NC}"
+                echo -e "${CYAN}📋 The tunnel URL will appear below - use it to access your Gensyn node remotely${NC}"
                 echo ""
                 sleep 2
                 cloudflared tunnel --url ${LOCAL_URL}
@@ -436,86 +419,15 @@ install_cloudflared() {
     else
         print_status "📋 Port 3000 Status: Not Active"
         echo ""
-        print_status "💡 To use the tunnel:"
-        echo "1. Start your application on port 3000"  
-        print_status "2. Then run: cloudflared tunnel --url ${LOCAL_URL}"
+        print_status "💡 Next steps:"
+        echo "1. First run option 1 to install and start Gensyn AI Node"
+        echo "2. Wait for the node to start on port 3000"
+        echo "3. Then run this option again to tunnel it"
         echo ""
-        print_status "🔍 Common applications that use port 3000:"
-        echo "• React development server (npm start)"
-        echo "• Node.js applications" 
-        echo "• Next.js applications"
-        echo "• Express.js servers"
-        echo "• Gensyn AI Node (if running)"
+        print_status "🔍 Or manually start tunnel later with:"
+        echo -e "${GREEN}cloudflared tunnel --url ${LOCAL_URL}${NC}"
         echo ""
-        print_status "🛠️ Quick test - Start a simple HTTP server on port 3000 and tunnel it?"
-        echo -n "Press y for Yes, or any other key to skip: "
-        read -r test_server
-        
-        case "${test_server,,}" in
-            y|yes)
-                print_status "🚀 Starting simple HTTP server on port 3000..."
-                
-                # Just start a simple HTTP server without any HTML files
-                if command -v python3 &> /dev/null; then
-                    # Create a minimal temp directory with just a simple message
-                    TEST_DIR=$(mktemp -d)
-                    cd "$TEST_DIR"
-                    echo "🌐 Cloudflared Tunnel Test - Port 3000 is working! 🚀" > index.txt
-                    
-                    print_status "⚡ Starting server..."
-                    python3 -m http.server 3000 > /dev/null 2>&1 &
-                    SERVER_PID=$!
-                    sleep 3
-                    
-                    # Check if server started
-                    if kill -0 $SERVER_PID 2>/dev/null && lsof -i:3000 &>/dev/null; then
-                        print_success "✅ HTTP server started on port 3000"
-                        print_status "🚀 Starting Cloudflare tunnel..."
-                        echo ""
-                        echo "Press Ctrl+C to stop the tunnel and server"
-                        echo ""
-                        
-                        # Start tunnel
-                        cloudflared tunnel --url ${LOCAL_URL}
-                        
-                        # Clean up when tunnel stops
-                        kill $SERVER_PID 2>/dev/null || true
-                        cd - > /dev/null
-                        rm -rf "$TEST_DIR"
-                    else
-                        print_error "❌ Failed to start HTTP server on port 3000"
-                        kill $SERVER_PID 2>/dev/null || true
-                        rm -rf "$TEST_DIR"
-                    fi
-                elif command -v nc &> /dev/null; then
-                    print_status "⚡ Starting netcat server on port 3000..."
-                    echo "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n🌐 Cloudflared Tunnel Test - Port 3000 is working! 🚀" | nc -l -p 3000 &
-                    NC_PID=$!
-                    sleep 2
-                    
-                    if kill -0 $NC_PID 2>/dev/null; then
-                        print_success "✅ Netcat server started on port 3000"
-                        print_status "🚀 Starting Cloudflare tunnel..."
-                        echo ""
-                        echo "Press Ctrl+C to stop the tunnel"
-                        echo ""
-                        
-                        cloudflared tunnel --url ${LOCAL_URL}
-                        
-                        kill $NC_PID 2>/dev/null || true
-                    else
-                        print_error "❌ Failed to start netcat server"
-                    fi
-                else
-                    print_error "❌ Neither python3 nor netcat found. Cannot start test server."
-                    print_status "💡 Install python3 or netcat to use the test server feature."
-                fi
-                ;;
-            *)
-                print_status "💡 Cloudflared is ready! Start your app on port 3000 and run:"
-                print_status "cloudflared tunnel --url ${LOCAL_URL}"
-                ;;
-        esac
+        print_warning "⚠️ The tunnel will only work when something is running on port 3000"
     fi
     
     echo ""
