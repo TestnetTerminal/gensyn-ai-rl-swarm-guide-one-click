@@ -87,10 +87,11 @@ show_menu() {
     echo -e "${YELLOW}1. 🛠️  Install Gensyn AI Node${NC}"
     echo -e "${YELLOW}2. 🛜 Install Cloudflared and Tunnel${NC}"
     echo -e "${YELLOW}3. ⬇️  Download Swarm.pem File${NC}"
-    echo -e "${PURPLE}4. 🗑️  Delete Gensyn AI Node${NC}"
-    echo -e "${RED}5. ❌ Exit${NC}"
+    echo -e "${PURPLE}4. 🔄 Upgrade Gensyn AI Node${NC}"
+    echo -e "${PURPLE}5. 🗑️  Delete Gensyn AI Node${NC}"
+    echo -e "${RED}6. ❌ Exit${NC}"
     echo ""
-    echo -n -e "${WHITE}Select an option (1-5): ${NC}"
+    echo -n -e "${WHITE}Select an option (1-6): ${NC}"
 }
 
 # System detection functions
@@ -982,6 +983,260 @@ EOF
     read -p "Press Enter to return to main menu..."
 }
 
+# Upgrade Gensyn AI Node
+upgrade_gensyn_node() {
+    echo ""
+    echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${PURPLE}║                    🔄 Upgrading Gensyn AI Node 🔄                ║${NC}"
+    echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Get current user and check for rl-swarm directory
+    CURRENT_USER=$(whoami)
+    RL_SWARM_DIR="/home/$CURRENT_USER/rl-swarm"
+    
+    # Check if rl-swarm directory exists
+    if [ ! -d "$RL_SWARM_DIR" ]; then
+        print_error "❌ rl-swarm directory not found at: $RL_SWARM_DIR"
+        echo ""
+        print_status "💡 Please run option 1 first to install Gensyn AI Node"
+        echo ""
+        read -p "Press Enter to return to main menu..."
+        return
+    fi
+    
+    # Check if screen session exists
+    if ! screen -list | grep -q "gensyn"; then
+        print_warning "⚠️ Gensyn screen session not found"
+        print_status "💡 The node might not be running or using a different session name"
+        echo ""
+    else
+        print_success "✅ Found Gensyn screen session"
+    fi
+    
+    print_status "📁 Found rl-swarm directory: $RL_SWARM_DIR"
+    echo ""
+    
+    print_status "🔄 Upgrade process will:"
+    echo "1. Stop the current Gensyn node (if running)"
+    echo "2. Pull the latest updates from GitHub"
+    echo "3. Clean and reset the repository"
+    echo "4. Restart the node with latest version"
+    echo ""
+    
+    print_warning "⚠️ This will interrupt any running training/tasks"
+    echo ""
+    echo -n -e "${WHITE}Continue with upgrade? (Y/n): ${NC}"
+    read -r confirm
+    
+    case "${confirm,,}" in
+        n|no)
+            print_warning "🚫 Upgrade cancelled by user."
+            echo ""
+            read -p "Press Enter to return to main menu..."
+            return
+            ;;
+        *|y|yes|"")
+            ;;
+    esac
+    
+    echo ""
+    print_status "🔄 Starting upgrade process..."
+    
+    # Step 1: Stop the screen session if it exists
+    if screen -list | grep -q "gensyn"; then
+        print_status "🛑 Stopping Gensyn screen session..."
+        screen -S gensyn -X stuff "^C"  # Send Ctrl+C to the screen session
+        sleep 3
+        screen -S gensyn -X quit 2>/dev/null || true
+        print_success "✅ Screen session stopped"
+    else
+        print_status "ℹ️ No active screen session to stop"
+    fi
+    
+    # Step 2: Navigate to directory and update
+    print_status "📁 Navigating to rl-swarm directory..."
+    cd "$RL_SWARM_DIR" || {
+        print_error "❌ Failed to access rl-swarm directory"
+        return 1
+    }
+    
+    print_status "🔄 Updating repository..."
+    echo ""
+    
+    # Check if we're in a git repository
+    if [ ! -d ".git" ]; then
+        print_error "❌ Not a git repository. Please reinstall using option 1."
+        echo ""
+        read -p "Press Enter to return to main menu..."
+        return
+    fi
+    
+    # Show current version/commit before upgrade
+    print_status "📋 Current version:"
+    git log --oneline -1 2>/dev/null || echo "Unable to get current version"
+    echo ""
+    
+    # Perform the upgrade commands
+    print_status "🔄 Switching to main branch..."
+    if git switch main 2>/dev/null; then
+        print_success "✅ Switched to main branch"
+    else
+        print_warning "⚠️ Switch to main failed, trying checkout..."
+        git checkout main 2>/dev/null || {
+            print_error "❌ Failed to switch to main branch"
+            echo ""
+            read -p "Press Enter to return to main menu..."
+            return
+        }
+    fi
+    
+    print_status "🔄 Resetting repository state..."
+    git reset --hard
+    print_success "✅ Repository reset complete"
+    
+    print_status "🔄 Cleaning repository..."
+    git clean -fd
+    print_success "✅ Repository cleaned"
+    
+    print_status "📥 Pulling latest updates..."
+    if git pull origin main; then
+        print_success "✅ Updates pulled successfully"
+    else
+        print_error "❌ Failed to pull updates"
+        echo ""
+        print_status "💡 Check your internet connection and try again"
+        read -p "Press Enter to return to main menu..."
+        return
+    fi
+    
+    echo ""
+    
+    # Show new version after upgrade
+    print_status "📋 New version:"
+    git log --oneline -1 2>/dev/null || echo "Unable to get new version"
+    echo ""
+    
+    # Check for swarm.pem file
+    if [ -f "swarm.pem" ]; then
+        print_success "✅ swarm.pem file found"
+    else
+        print_warning "⚠️ swarm.pem file not found"
+        print_status "💡 You may need to copy your swarm.pem file back to this directory"
+    fi
+    
+    echo ""
+    print_status "🚀 Starting upgraded Gensyn node..."
+    
+    # Start new screen session with upgraded node
+    screen -S gensyn -dm bash -c "
+    set -e
+    cd '$RL_SWARM_DIR'
+    
+    echo '🔄 Starting upgraded Gensyn AI Node...'
+    echo '📁 Working directory: \$(pwd)'
+    echo '📋 Git version: \$(git log --oneline -1 2>/dev/null || echo \"Unknown\")'
+    echo ''
+    
+    # Activate virtual environment
+    if [ -d '.venv' ]; then
+        echo '🐍 Activating Python virtual environment...'
+        source .venv/bin/activate
+        echo '✅ Virtual environment activated'
+    else
+        echo '⚠️ Virtual environment not found, creating new one...'
+        python3 -m venv .venv
+        source .venv/bin/activate
+        pip install --upgrade pip
+        pip install --force-reinstall transformers==4.51.3 trl==0.19.1
+    fi
+    
+    echo ''
+    echo '🔑 Checking for swarm.pem file...'
+    if [ -f 'swarm.pem' ]; then
+        echo '✅ Found swarm.pem file, proceeding with authentication...'
+    else
+        echo '⚠️ No swarm.pem found in the current directory.'
+        echo '📂 Please copy your swarm.pem file to: \$(pwd)'
+        echo ''
+        echo '⏳ Waiting 30 seconds for you to copy the file...'
+        echo '✅ Press 1 and Enter if you have copied the file to continue immediately'
+        
+        # Countdown with user input option
+        for i in \$(seq 30 -1 1); do
+            printf \"\\r⏰ Waiting: %02d seconds (Press 1 to continue)\" \$i
+            
+            if read -t 1 -n 1 user_input 2>/dev/null; then
+                if [ \"\$user_input\" = \"1\" ]; then
+                    echo \"\"
+                    echo \"⚡ Continuing...\"
+                    break
+                fi
+            fi
+        done
+        echo \"\"
+    fi
+    
+    echo ''
+    echo '🚀 Starting the upgraded swarm node...'
+    chmod +x run_rl_swarm.sh 2>/dev/null || true
+    
+    if ./run_rl_swarm.sh; then
+        echo '✅ Swarm completed successfully.'
+    else
+        echo '❌ Swarm exited with an error or was interrupted.'
+    fi
+    
+    echo ''
+    echo '🔄 Swarm process ended. Screen session will remain active.'
+    echo '📋 To restart the swarm, run: ./run_rl_swarm.sh'
+    echo '🚪 To exit this screen session, type: exit'
+    echo ''
+    
+    # Keep the screen session alive
+    while true; do
+        echo '⏳ Screen session active. Press Ctrl+C to exit or run commands...'
+        sleep 30
+    done
+    "
+    
+    sleep 3
+    
+    echo ""
+    print_success "✅ Gensyn AI Node upgrade completed!"
+    echo ""
+    echo -e "${CYAN}📋 Upgrade Summary:${NC}"
+    echo "• Repository updated to latest version"
+    echo "• Node restarted with new code"
+    echo "• Screen session 'gensyn' is active"
+    echo ""
+    echo -e "${YELLOW}🔍 Next steps:${NC}"
+    echo -e "${GREEN}screen -r gensyn${NC}          # Attach to node session to check status"
+    echo -e "${GREEN}screen -list${NC}              # List all screen sessions"
+    echo -e "${GREEN}Ctrl+A then D${NC}            # Detach from screen session"
+    echo ""
+    print_status "🚪 Exiting script so you can check your upgraded node..."
+    echo -e "${CYAN}💡 Run: screen -r gensyn to attach to your node${NC}"
+    echo ""
+    
+    # Show exit message and exit script
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                        👋 Thank You! 👋                          ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}🙏 Thank you for using Testnet Terminal's OneClick Setup!${NC}"
+    echo ""
+    echo -e "${YELLOW}🔗 Stay Connected:${NC}"
+    echo -e "${BLUE}📱 Telegram: ${NC}https://t.me/TestnetTerminal"
+    echo -e "${BLUE}🐙 GitHub: ${NC}https://github.com/TestnetTerminal" 
+    echo -e "${BLUE}🐦 Twitter: ${NC}https://x.com/TestnetTerminal"
+    echo -e "${BLUE}🆘 Support: ${NC}https://t.me/Amit3701"
+    echo ""
+    echo -e "${GREEN}✨ Your node has been upgraded! Check it with: screen -r gensyn ✨${NC}"
+    echo ""
+    exit 0
+}
+
 # Delete Gensyn Node completely
 delete_gensyn_node() {
     echo ""
@@ -1176,9 +1431,12 @@ main() {
                 download_swarm_pem
                 ;;
             4)
-                delete_gensyn_node
+                upgrade_gensyn_node
                 ;;
             5)
+                delete_gensyn_node
+                ;;
+            6)
                 exit_script
                 ;;
             *)
