@@ -12,6 +12,30 @@ PURPLE='\033[0;35m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
+# Graceful exit function
+graceful_exit() {
+    echo ""
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                        👋 Thank You! 👋                          ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}🙏 Thank you for using Testnet Terminal's OneClick Setup!${NC}"
+    echo ""
+    echo -e "${YELLOW}🔗 Stay Connected:${NC}"
+    echo -e "${BLUE}📱 Telegram: ${NC}https://t.me/TestnetTerminal"
+    echo -e "${BLUE}🐙 GitHub: ${NC}https://github.com/TestnetTerminal" 
+    echo -e "${BLUE}🐦 Twitter: ${NC}https://x.com/TestnetTerminal"
+    echo -e "${BLUE}🆘 Support: ${NC}https://t.me/Amit3701"
+    echo ""
+    echo -e "${GREEN}✨ Happy Testing! See you next time! ✨${NC}"
+    echo ""
+    exit 0
+}
+
+# Set trap to catch Ctrl+C and other signals
+trap 'graceful_exit' INT TERM
+
 # Function to print colored output
 print_status() {
     echo -e "${GREEN}[INFO]${NC} $1"
