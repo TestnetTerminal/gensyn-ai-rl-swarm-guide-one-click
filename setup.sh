@@ -307,7 +307,7 @@ install_gensyn_node() {
     read -p "Press Enter to return to main menu..."
 }
 
-# Install Cloudflared and Tunnel
+# Install cloudflared - FIXED VERSION
 install_cloudflared() {
     echo ""
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
@@ -421,20 +421,39 @@ install_cloudflared() {
             *) print_error "❌ Unsupported architecture: $ARCH"; return 1 ;;
         esac
 
-        TEMP_DIR=$(mktemp -d)
-        cd "$TEMP_DIR"
-
+        # Get current user's home directory
+        CURRENT_USER=$(whoami)
+        USER_HOME="/home/$CURRENT_USER"
+        
+        # FIXED: Download directly to user's home directory
         if [ "$PKG_MANAGER" = "apt" ]; then
-            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}.deb"
-            $SUDO_CMD dpkg -i "cloudflared-linux-${ARCH_SUFFIX}.deb"
+            print_status "📥 Downloading cloudflared .deb package to $USER_HOME..."
+            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}.deb" -O "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
+            
+            if [ -f "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb" ]; then
+                print_status "📦 Installing cloudflared package..."
+                $SUDO_CMD dpkg -i "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
+                print_success "✅ Cloudflared .deb file saved to: $USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
+            else
+                print_error "❌ Failed to download cloudflared package"
+                return 1
+            fi
         else
-            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}" -O cloudflared
-            chmod +x cloudflared
-            $SUDO_CMD mv cloudflared /usr/local/bin/cloudflared
+            # For non-apt systems
+            print_status "📥 Downloading cloudflared binary to $USER_HOME..."
+            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}" -O "$USER_HOME/cloudflared"
+            
+            if [ -f "$USER_HOME/cloudflared" ]; then
+                chmod +x "$USER_HOME/cloudflared"
+                print_status "📦 Installing cloudflared to /usr/local/bin..."
+                $SUDO_CMD cp "$USER_HOME/cloudflared" /usr/local/bin/cloudflared
+                print_success "✅ Cloudflared binary saved to: $USER_HOME/cloudflared"
+            else
+                print_error "❌ Failed to download cloudflared binary"
+                return 1
+            fi
         fi
 
-        cd - > /dev/null
-        rm -rf "$TEMP_DIR"
         print_success "✅ Cloudflared installed successfully!"
     fi
 
