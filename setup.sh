@@ -381,28 +381,13 @@ install_cloudflared() {
         echo ""
     fi
 
-    # Install required tools
-    print_status "📦 Installing required tools..."
-    $SUDO_CMD $PKG_UPDATE
-    $SUDO_CMD $PKG_INSTALL curl wget lsof
-
-    # Configure firewall (skip for WSL)
-    if [ "$OS" != "WSL" ]; then
-        print_status "🛡️ Configuring firewall..."
-        if [ "$PKG_MANAGER" = "apt" ]; then
-            if ! command -v ufw &> /dev/null; then
-                $SUDO_CMD $PKG_INSTALL ufw
-            fi
-            $SUDO_CMD ufw allow 22/tcp 2>/dev/null || true
-            $SUDO_CMD ufw allow 3000/tcp 2>/dev/null || true
-            echo "y" | $SUDO_CMD ufw enable 2>/dev/null || true
-            print_success "🛡️ UFW firewall configured!"
-        else
-            print_warning "⚠️ Please manually open ports 22 and 3000 in your firewall"
-        fi
-    else
-        print_status "🖥️ WSL detected. Skipping firewall configuration."
-    fi
+    # Install UFW and configure firewall
+    print_status "🛡️ Installing and configuring UFW firewall..."
+    sudo apt install ufw -y
+    sudo ufw allow 22
+    sudo ufw allow 3000/tcp
+    echo "y" | sudo ufw enable
+    print_success "🛡️ UFW firewall configured!"
 
     # Install cloudflared
     if command -v cloudflared &> /dev/null; then
@@ -410,50 +395,15 @@ install_cloudflared() {
         VERSION_INFO=$(cloudflared --version 2>&1 | head -n1)
         echo -e "${GREEN}   Version: ${NC}$VERSION_INFO"
     else
-        print_status "📥 Installing Cloudflared..."
+        print_status "📥 Downloading cloudflared..."
+        wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         
-        # Detect architecture
-        ARCH=$(uname -m)
-        case $ARCH in
-            x86_64|amd64) ARCH_SUFFIX="amd64" ;;
-            aarch64|arm64) ARCH_SUFFIX="arm64" ;;
-            armv7l|armv6l) ARCH_SUFFIX="arm" ;;
-            *) print_error "❌ Unsupported architecture: $ARCH"; return 1 ;;
-        esac
-
-        # Get current user's home directory
-        CURRENT_USER=$(whoami)
-        USER_HOME="/home/$CURRENT_USER"
+        print_status "📦 Installing cloudflared..."
+        sudo dpkg -i cloudflared-linux-amd64.deb
         
-        # FIXED: Download directly to user's home directory (no temp dirs!)
-        if [ "$PKG_MANAGER" = "apt" ]; then
-            print_status "📥 Downloading cloudflared .deb package to $USER_HOME..."
-            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}.deb" -O "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
-            
-            if [ -f "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb" ]; then
-                print_status "📦 Installing cloudflared package..."
-                $SUDO_CMD dpkg -i "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
-                print_success "✅ Cloudflared installed and .deb file permanently saved to: $USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
-            else
-                print_error "❌ Failed to download cloudflared package"
-                return 1
-            fi
-        else
-            # For non-apt systems
-            print_status "📥 Downloading cloudflared binary to $USER_HOME..."
-            wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}" -O "$USER_HOME/cloudflared"
-            
-            if [ -f "$USER_HOME/cloudflared" ]; then
-                chmod +x "$USER_HOME/cloudflared"
-                print_status "📦 Installing cloudflared to /usr/local/bin..."
-                $SUDO_CMD cp "$USER_HOME/cloudflared" /usr/local/bin/cloudflared
-                print_success "✅ Cloudflared installed and binary permanently saved to: $USER_HOME/cloudflared"
-            else
-                print_error "❌ Failed to download cloudflared binary"
-                return 1
-            fi
-        fi
-
+        print_status "🔍 Verifying installation..."
+        cloudflared --version
+        
         print_success "✅ Cloudflared installed successfully!"
     fi
 
