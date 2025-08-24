@@ -425,7 +425,7 @@ install_cloudflared() {
         CURRENT_USER=$(whoami)
         USER_HOME="/home/$CURRENT_USER"
         
-        # FIXED: Download directly to user's home directory
+        # FIXED: Download directly to user's home directory (no temp dirs!)
         if [ "$PKG_MANAGER" = "apt" ]; then
             print_status "📥 Downloading cloudflared .deb package to $USER_HOME..."
             wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH_SUFFIX}.deb" -O "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
@@ -433,7 +433,7 @@ install_cloudflared() {
             if [ -f "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb" ]; then
                 print_status "📦 Installing cloudflared package..."
                 $SUDO_CMD dpkg -i "$USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
-                print_success "✅ Cloudflared .deb file saved to: $USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
+                print_success "✅ Cloudflared installed and .deb file permanently saved to: $USER_HOME/cloudflared-linux-${ARCH_SUFFIX}.deb"
             else
                 print_error "❌ Failed to download cloudflared package"
                 return 1
@@ -447,7 +447,7 @@ install_cloudflared() {
                 chmod +x "$USER_HOME/cloudflared"
                 print_status "📦 Installing cloudflared to /usr/local/bin..."
                 $SUDO_CMD cp "$USER_HOME/cloudflared" /usr/local/bin/cloudflared
-                print_success "✅ Cloudflared binary saved to: $USER_HOME/cloudflared"
+                print_success "✅ Cloudflared installed and binary permanently saved to: $USER_HOME/cloudflared"
             else
                 print_error "❌ Failed to download cloudflared binary"
                 return 1
